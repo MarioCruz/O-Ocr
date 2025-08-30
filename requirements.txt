@@ -1,0 +1,4 @@
+groq
+pillow
+flask
+pdf2image

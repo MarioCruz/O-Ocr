@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to Text Verification Interface</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .btn { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background-color: #0056b3; }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        .main-content { display: flex; gap: 20px; height: 600px; }
+        .image-panel, .text-panel { flex: 1; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .image-panel h3, .text-panel h3 { margin-top: 0; color: #333; }
+        .image-container { text-align: center; height: 500px; display: flex; align-items: center; justify-content: center; overflow: auto; border: 1px solid #ddd; }
+        .image-container img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; transition: transform 0.2s; }
+        .image-container img.zoomed { transform: scale(1.65); cursor: zoom-out; }
+        .text-area { width: 100%; height: 500px; border: 1px solid #ddd; border-radius: 4px; padding: 10px; font-size: 14px; resize: vertical; }
+        .status { text-align: center; margin-top: 20px; padding: 10px; background: #e9ecef; border-radius: 4px; }
+        .loading { color: #007bff; }
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+        
+        /* Modal styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; max-height: 80%; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        .help-section { margin-bottom: 20px; }
+        .help-section h3 { color: #007bff; margin-bottom: 10px; }
+        .filename-example { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; margin: 5px 0; }
+        .theme-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .theme-item { background: #e9ecef; padding: 8px; border-radius: 4px; }
+        .theme-name { font-weight: bold; color: #495057; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Image to Text Verification Interface</h1>
+            <p>Convert handwritten student poems to digital text using Groq API</p>
+        </div>
+        
+        <div class="controls">
+            <input type="file" id="fileInput" accept="image/*,.pdf" style="display: none;" onchange="uploadImage()">
+            <button class="btn" onclick="document.getElementById('fileInput').click()">Upload Image</button>
+            <button class="btn" onclick="previousImage()">Previous</button>
+            <button class="btn" onclick="nextImage()">Next</button>
+            <button class="btn" onclick="convertToText()">Convert to Text</button>
+            <button class="btn" onclick="saveText()">Save Text</button>
+            <button class="btn" onclick="batchProcess()" style="background-color: #28a745;">Batch Process All</button>
+            <button class="btn" onclick="showApiKeyModal()" style="background-color: #ffc107;">API Key</button>
+            <button class="btn" onclick="showHelp()" style="background-color: #17a2b8;">Help</button>
+        </div>
+        
+        <div class="main-content">
+            <div class="image-panel">
+                <h3>Original Image</h3>
+                <div class="image-container" id="imageContainer">
+                    <p>Click "Upload Image" to load an image file</p>
+                </div>
+            </div>
+            
+            <div class="text-panel">
+                <h3>Converted Text (Editable) <span id="confidenceScore" style="color: #28a745; font-size: 14px;"></span></h3>
+                <textarea class="text-area" id="textArea" placeholder="Converted text will appear here..."></textarea>
+            </div>
+        </div>
+        
+        <div class="status" id="status">Ready</div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeHelp()">&times;</span>
+            <h2>📚 Image to Text Help Guide</h2>
+            
+            <div class="help-section">
+                <h3>🎯 How to Use</h3>
+                <p><strong>1. Upload files:</strong> Click "Upload Image" to add PDFs or images</p>
+                <p><strong>2. Navigate:</strong> Use Previous/Next to browse through files</p>
+                <p><strong>3. Convert:</strong> Click "Convert to Text" to transcribe current image</p>
+                <p><strong>4. Review:</strong> Check AI confidence score next to "Converted Text"</p>
+                <p><strong>5. Edit:</strong> Modify the transcribed text in the right panel</p>
+                <p><strong>6. Save:</strong> Click "Save Text" to create file with metadata</p>
+                <p><strong>6. Batch process:</strong> Click "Batch Process All" to convert all uploaded files</p>
+            </div>
+
+            <div class="help-section">
+                <h3>🔄 Bulk Conversion</h3>
+                <p>Process multiple files at once with intelligent naming:</p>
+                <p><strong>• Upload multiple files:</strong> Add images and PDFs to the uploads folder</p>
+                <p><strong>• Click "Batch Process All":</strong> Converts all files automatically</p>
+                <p><strong>• AI extraction:</strong> Automatically identifies student names, schools, poem titles, and themes</p>
+                <p><strong>• Organized output:</strong> Creates meaningful filenames for easy sorting</p>
+                <p><strong>• Progress tracking:</strong> Shows completion status and file count</p>
+                <p><strong>• Error handling:</strong> Continues processing even if some files fail</p>
+                <p><strong>• Summary report:</strong> Generates batch_results.json with processing details</p>
+            </div>
+
+            <div class="help-section">
+                <h3>📁 Smart File Naming</h3>
+                <p>Files are automatically named using information extracted from the poem:</p>
+                <div class="filename-example">{School}_{Student}_{Poem_Title}_{Theme}.txt</div>
+                
+                <p><strong>Examples:</strong></p>
+                <div class="filename-example">Lincoln_Elementary_Maria_Garcia_Ocean_Dreams_nature.txt</div>
+                <div class="filename-example">Roosevelt_Middle_John_Smith_My_Family_family.txt</div>
+                <div class="filename-example">Washington_High_Sarah_Johnson_Best_Friend_friendship.txt</div>
+            </div>
+
+            <div class="help-section">
+                <h3>🏷️ AI Theme Detection</h3>
+                <p>The AI automatically identifies poem themes by understanding content:</p>
+                <div class="theme-list">
+                    <div class="theme-item">
+                        <div class="theme-name">Family</div>
+                        <div>Poems about relatives, parents, siblings, home life</div>
+                    </div>
+                    <div class="theme-item">
+                        <div class="theme-name">Nature</div>
+                        <div>Poems about outdoors, animals, weather, plants</div>
+                    </div>
+                    <div class="theme-item">
+                        <div class="theme-name">Friendship</div>
+                        <div>Poems about friends, playing together, kindness</div>
+                    </div>
+                    <div class="theme-item">
+                        <div class="theme-name">School</div>
+                        <div>Poems about learning, teachers, classroom activities</div>
+                    </div>
+                    <div class="theme-item">
+                        <div class="theme-name">Emotions</div>
+                        <div>Poems expressing feelings, moods, reactions</div>
+                    </div>
+                    <div class="theme-item">
+                        <div class="theme-name">Seasons</div>
+                        <div>Poems about weather, seasonal activities, holidays</div>
+                    </div>
+                    <div class="theme-item">
+                        <div class="theme-name">Miami</div>
+                        <div>Poems about Miami, Florida, beaches, city life, local culture</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h3>📋 Supported Formats</h3>
+                <p><strong>Input:</strong> PNG, JPG, JPEG, GIF, BMP, TIFF, PDF</p>
+                <p><strong>Output:</strong> UTF-8 encoded .txt files</p>
+                <p><strong>File size limit:</strong> 50MB maximum</p>
+            </div>
+
+            <div class="help-section">
+                <h3>⌨️ Keyboard Shortcuts</h3>
+                <p><strong>← →</strong> Navigate between images</p>
+                <p><strong>Ctrl + Enter</strong> Convert to text</p>
+                <p><strong>Ctrl + S</strong> Save text</p>
+            </div>
+
+            <div class="help-section">
+                <h3>💡 Tips</h3>
+                <p>• Check AI confidence score - higher scores indicate more accurate transcription</p>
+                <p>• Text is auto-saved every 30 seconds as you type</p>
+                <p>• Click on images to zoom in/out for better readability</p>
+                <p>• PDF files are automatically split into individual pages</p>
+                <p>• AI automatically extracts metadata (POEM_TITLE, POEM_THEME) for organization</p>
+                <p>• Batch processing creates meaningful filenames using AI-identified information</p>
+                <p>• Files are organized in separate upload and output directories</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close" onclick="closeApiKeyModal()">&times;</span>
+            <h2>🔑 Groq API Settings</h2>
+            <p>Enter your Groq API key and select model:</p>
+            <input type="password" id="apiKeyInput" placeholder="Enter your Groq API key" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;" onblur="loadModelsFromInput()">
+            <select id="modelSelect" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (Default)</option>
+                <option value="llama-3.2-90b-vision-preview">Llama 3.2 90B Vision</option>
+                <option value="llama-3.2-11b-vision-preview">Llama 3.2 11B Vision</option>
+            </select>
+            <div style="margin-top: 15px;">
+                <button class="btn" onclick="saveApiKey()" style="background-color: #28a745;">Save Settings</button>
+                <button class="btn" onclick="clearApiKey()" style="background-color: #dc3545;">Clear Settings</button>
+            </div>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">Your API key is stored locally in your browser and never sent to our servers except for API calls.</p>
+        </div>
+    </div>
+
+    <script>
+        let currentFilename = '';
+        
+        function updateStatus(message, type = '') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+        
+        function loadImage() {
+            fetch('/get_image_info')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        updateStatus(data.error, 'error');
+                        return;
+                    }
+                    
+                    const imageContainer = document.getElementById('imageContainer');
+                    imageContainer.innerHTML = `<img src="data:image/jpeg;base64,${data.image_base64}" alt="${data.filename}" onclick="toggleZoom(this)">`;
+                    
+                    currentFilename = data.filename;
+                    updateStatus(`Image ${data.index}/${data.total}: ${data.filename}`);
+                    loadDraft(data.filename);
+                })
+                .catch(error => {
+                    updateStatus('Failed to load image', 'error');
+                });
+        }
+        
+        function previousImage() {
+            fetch('/navigate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction: 'prev' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                    return;
+                }
+                
+                const imageContainer = document.getElementById('imageContainer');
+                imageContainer.innerHTML = `<img src="data:image/jpeg;base64,${data.image_base64}" alt="${data.filename}" onclick="toggleZoom(this)">`;
+                
+                currentFilename = data.filename;
+                updateStatus(`Image ${data.index}/${data.total}: ${data.filename}`);
+                
+                // Clear text area and load draft
+                document.getElementById('textArea').value = '';
+                loadDraft(data.filename);
+            });
+        }
+        
+        function nextImage() {
+            fetch('/navigate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction: 'next' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                    return;
+                }
+                
+                const imageContainer = document.getElementById('imageContainer');
+                imageContainer.innerHTML = `<img src="data:image/jpeg;base64,${data.image_base64}" alt="${data.filename}" onclick="toggleZoom(this)">`;
+                
+                currentFilename = data.filename;
+                updateStatus(`Image ${data.index}/${data.total}: ${data.filename}`);
+                
+                // Clear text area and load draft
+                document.getElementById('textArea').value = '';
+                loadDraft(data.filename);
+            });
+        }
+        
+        function convertToText() {
+            const apiKey = localStorage.getItem('groq_api_key');
+            if (!apiKey) {
+                updateStatus('Please set your Groq API key first', 'error');
+                showApiKeyModal();
+                return;
+            }
+            
+            updateStatus('Converting image to text...', 'loading');
+            
+            const model = localStorage.getItem('groq_model') || 'meta-llama/llama-4-scout-17b-16e-instruct';
+            
+            fetch('/convert_text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey, model: model })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                    return;
+                }
+                
+                document.getElementById('textArea').value = data.text;
+                
+                // Display confidence score
+                const confidenceElement = document.getElementById('confidenceScore');
+                if (data.confidence_score) {
+                    confidenceElement.textContent = `(${data.confidence_score})`;
+                } else {
+                    confidenceElement.textContent = '';
+                }
+                
+                // Store student name, school, poem title, theme, and language for filename
+                window.currentStudentName = data.student_name || '';
+                window.currentSchoolName = data.school_name || '';
+                window.currentPoemTitle = data.poem_title || '';
+                window.currentPoemTheme = data.poem_theme || '';
+                window.currentPoemLanguage = data.poem_language || '';
+                
+                updateStatus('Conversion completed successfully', 'success');
+            })
+            .catch(error => {
+                updateStatus('Conversion failed', 'error');
+            });
+        }
+        
+        function saveText() {
+            const text = document.getElementById('textArea').value;
+            
+            if (!text.trim()) {
+                updateStatus('No text to save', 'error');
+                return;
+            }
+            
+            fetch('/save_text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    text: text,
+                    student_name: window.currentStudentName || '',
+                    school_name: window.currentSchoolName || '',
+                    poem_title: window.currentPoemTitle || '',
+                    poem_theme: window.currentPoemTheme || '',
+                    poem_language: window.currentPoemLanguage || '',
+                    filename: currentFilename
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                    return;
+                }
+                
+                updateStatus(data.success, 'success');
+            })
+            .catch(error => {
+                updateStatus('Save failed', 'error');
+            });
+        }
+        
+        function toggleZoom(img) {
+            img.classList.toggle('zoomed');
+        }
+        
+
+        
+        function uploadImage() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            updateStatus('Uploading image...', 'loading');
+            
+            fetch('/upload_image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                    return;
+                }
+                
+                const imageContainer = document.getElementById('imageContainer');
+                imageContainer.innerHTML = `<img src="data:image/jpeg;base64,${data.image_base64}" alt="${data.filename}" onclick="toggleZoom(this)">`;
+                
+                currentFilename = data.filename;
+                updateStatus(`Image ${data.index}/${data.total}: ${data.filename}`);
+                
+                document.getElementById('textArea').value = '';
+                loadDraft(data.filename);
+            })
+            .catch(error => {
+                updateStatus('Upload failed', 'error');
+            });
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') previousImage();
+            if (e.key === 'ArrowRight') nextImage();
+            if (e.key === 'Enter' && e.ctrlKey) convertToText();
+            if (e.key === 's' && e.ctrlKey) { e.preventDefault(); saveText(); }
+        });
+        
+        // Auto-save text every 30 seconds
+        setInterval(function() {
+            const text = document.getElementById('textArea').value;
+            if (text.trim() && currentFilename && currentFilename !== '') {
+                localStorage.setItem('draft_' + currentFilename, text);
+            }
+        }, 30000);
+        
+        // Load draft when switching images
+        function loadDraft(filename) {
+            const draft = localStorage.getItem('draft_' + filename);
+            if (draft) {
+                document.getElementById('textArea').value = draft;
+                updateStatus('Draft loaded', 'success');
+            }
+        }
+        
+        function showHelp() {
+            document.getElementById('helpModal').style.display = 'block';
+        }
+        
+        function closeHelp() {
+            document.getElementById('helpModal').style.display = 'none';
+        }
+        
+        function showApiKeyModal() {
+            const savedApiKey = localStorage.getItem('groq_api_key');
+            const savedModel = localStorage.getItem('groq_model');
+            document.getElementById('apiKeyInput').value = savedApiKey || '';
+            document.getElementById('modelSelect').value = savedModel || 'meta-llama/llama-4-scout-17b-16e-instruct';
+            document.getElementById('apiKeyModal').style.display = 'block';
+            
+            if (savedApiKey) {
+                loadModels(savedApiKey);
+            }
+        }
+        
+        function loadModels(apiKey) {
+            fetch('/get_models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.models) {
+                    const select = document.getElementById('modelSelect');
+                    const currentValue = select.value;
+                    select.innerHTML = '';
+                    
+                    data.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        select.appendChild(option);
+                    });
+                    
+                    select.value = currentValue;
+                }
+            })
+            .catch(error => console.log('Failed to load models'));
+        }
+        
+        function closeApiKeyModal() {
+            document.getElementById('apiKeyModal').style.display = 'none';
+        }
+        
+        function saveApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const model = document.getElementById('modelSelect').value;
+            if (apiKey) {
+                localStorage.setItem('groq_api_key', apiKey);
+                localStorage.setItem('groq_model', model);
+                updateStatus('Settings saved successfully', 'success');
+            } else {
+                updateStatus('Please enter a valid API key', 'error');
+            }
+            closeApiKeyModal();
+        }
+        
+        function clearApiKey() {
+            localStorage.removeItem('groq_api_key');
+            localStorage.removeItem('groq_model');
+            document.getElementById('apiKeyInput').value = '';
+            document.getElementById('modelSelect').value = 'meta-llama/llama-4-scout-17b-16e-instruct';
+            updateStatus('Settings cleared', 'success');
+            closeApiKeyModal();
+        }
+        
+        function loadModelsFromInput() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (apiKey) {
+                loadModels(apiKey);
+            }
+        }
+        
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const helpModal = document.getElementById('helpModal');
+            const apiKeyModal = document.getElementById('apiKeyModal');
+            if (event.target == helpModal) {
+                helpModal.style.display = 'none';
+            }
+            if (event.target == apiKeyModal) {
+                apiKeyModal.style.display = 'none';
+            }
+        }
+        
+        function batchProcess() {
+            if (!confirm('Process all images in uploads folder? This may take a while.')) {
+                return;
+            }
+            
+            updateStatus('Starting batch processing...', 'loading');
+            
+            fetch('/batch_process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                    return;
+                }
+                
+                updateStatus(data.success, 'success');
+            })
+            .catch(error => {
+                updateStatus('Batch processing failed', 'error');
+            });
+        }
+        
+        // Load first image on page load
+        window.onload = function() {
+            loadImage();
+        };
+    </script>
+</body>
+</html>

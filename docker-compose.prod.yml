@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  image-to-text:
+    environment:
+      - FLASK_ENV=production
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+    healthcheck:
+      interval: 60s
+      timeout: 30s

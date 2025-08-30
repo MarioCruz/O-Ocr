@@ -1,0 +1,44 @@
+version: '3.8'
+services:
+  image-to-text:
+    build: .
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./converted_poems:/app/output
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - UPLOAD_DIRECTORY=/app/uploads
+      - OUTPUT_DIRECTORY=/app/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  batch-processor:
+    build: .
+    volumes:
+      - ./uploads:/app/uploads
+      - ./converted_poems:/app/output
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - UPLOAD_DIRECTORY=/app/uploads
+      - OUTPUT_DIRECTORY=/app/output
+    command: python batch_processor.py
+    profiles:
+      - batch
+    restart: "no"
