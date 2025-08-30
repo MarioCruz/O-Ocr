@@ -283,4 +283,4 @@ sudo chown -R $USER:$USER uploads converted_poems
 
 ---
 
-**Built with ❤️ for educators digitizing student work**
+**Built with ❤️ by Mario The Maker for O Miami educators digitizing student Poems **
