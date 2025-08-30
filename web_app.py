@@ -157,11 +157,19 @@ def get_models():
 
 @app.route('/batch_process', methods=['POST'])
 def batch_process():
+    # Get API key from request
+    api_key = request.json.get('api_key') if request.json else None
+    if not api_key:
+        return jsonify({'error': 'API key required for batch processing'})
+    
     try:
         from batch_processor import BatchImageProcessor
         
         upload_dir = os.environ.get('UPLOAD_DIRECTORY', os.getcwd())
         output_dir = os.environ.get('OUTPUT_DIRECTORY', os.getcwd())
+        
+        # Set API key in environment for batch processor
+        os.environ['GROQ_API_KEY'] = api_key
         
         processor = BatchImageProcessor(upload_dir)
         results = processor.process_directory(upload_dir, output_dir)
