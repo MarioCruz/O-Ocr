@@ -5,8 +5,9 @@ import json
 from datetime import datetime
 
 class BatchImageProcessor:
-    def __init__(self, base_directory="/Users/mariocruz/FC/O"):
-        api_key = os.environ.get('GROQ_API_KEY')
+    def __init__(self, base_directory="/Users/mariocruz/FC/O", api_key=None):
+        if api_key is None:
+            api_key = os.environ.get('GROQ_API_KEY')
         if not api_key:
             raise ValueError("GROQ_API_KEY environment variable is required")
         self.client = Groq(api_key=api_key)
@@ -26,12 +27,13 @@ class BatchImageProcessor:
             return base64.b64encode(image_file.read()).decode('utf-8')
     
     def extract_student_info(self, text):
-        """Extract student name, school, poem title, and theme from converted text"""
+        """Extract student name, school, poem title, theme, and language from converted text"""
         lines = text.split('\n')
         student_name = ""
         school_name = ""
         poem_title = ""
         poem_theme = ""
+        poem_language = ""
         
         # Look for student name and school in first few lines
         for line in lines[:5]:
@@ -45,16 +47,16 @@ class BatchImageProcessor:
                 elif not student_name and len(line.split()) <= 4:  # Likely a name
                     student_name = line
         
-        # Extract poem title and theme from AI response
+        # Extract poem title, theme, and language from AI response
         for line in lines:
             if line.startswith('POEM_TITLE:'):
                 poem_title = line.replace('POEM_TITLE:', '').strip()
             elif line.startswith('POEM_THEME:'):
                 poem_theme = line.replace('POEM_THEME:', '').strip()
+            elif line.startswith('POEM_LANGUAGE:'):
+                poem_language = line.replace('POEM_LANGUAGE:', '').strip()
         
-
-        
-        return student_name, school_name, poem_title, poem_theme
+        return student_name, school_name, poem_title, poem_theme, poem_language
     
     def create_filename(self, student_name, school_name, poem_title, poem_theme, fallback_name):
         """Create meaningful filename from student info"""
@@ -73,7 +75,7 @@ class BatchImageProcessor:
         
         return '_'.join(parts) if parts else fallback_name
     
-    def convert_image_to_text(self, image_path):
+    def convert_image_to_text(self, image_path, model="meta-llama/llama-4-scout-17b-16e-instruct"):
         """Convert single image to text using Groq API"""
         try:
             base64_image = self.image_to_base64(image_path)
@@ -85,7 +87,7 @@ class BatchImageProcessor:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Transcribe everything in this image including student name, school name at the top, and the complete poem below. Preserve exact formatting, line breaks, and punctuation. Use [?] for unclear words. At the end, add: 'POEM_TITLE: [title of the poem]' and 'POEM_THEME: [theme like family, nature, friendship, school, emotions, seasons, or miami]'."
+                                "text": "Transcribe everything in this image including student name, school name at the top, and the complete poem below. Preserve exact formatting, line breaks, and punctuation. Use [?] for unclear words. At the end, add exactly these 4 lines with no additional text:\nPOEM_TITLE: [actual title]\nPOEM_THEME: [one word: family, nature, friendship, school, emotions, seasons, or miami]\nPOEM_LANGUAGE: [language name]\nConfidence: X/10"
                             },
                             {
                                 "type": "image_url",
@@ -96,9 +98,10 @@ class BatchImageProcessor:
                         ]
                     }
                 ],
-                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                model=model,
                 temperature=0.1,
-                max_tokens=1000
+                max_tokens=1000,
+                timeout=30
             )
             
             return chat_completion.choices[0].message.content
@@ -122,10 +125,10 @@ class BatchImageProcessor:
             image_path = os.path.join(directory_path, filename)
             print(f"Processing {i}/{len(image_files)}: {filename}")
             
-            converted_text = self.convert_image_to_text(image_path)
+            converted_text = self.convert_image_to_text(image_path, "meta-llama/llama-4-scout-17b-16e-instruct")
             
             # Extract student info for meaningful filename
-            student_name, school_name, poem_title, poem_theme = self.extract_student_info(converted_text)
+            student_name, school_name, poem_title, poem_theme, poem_language = self.extract_student_info(converted_text)
             fallback_name = os.path.splitext(filename)[0]
             meaningful_name = self.create_filename(student_name, school_name, poem_title, poem_theme, fallback_name)
             
@@ -137,6 +140,7 @@ class BatchImageProcessor:
                 "school_name": school_name,
                 "poem_title": poem_title,
                 "poem_theme": poem_theme,
+                "poem_language": poem_language,
                 "saved_as": f"{meaningful_name}.txt",
                 "processed_at": datetime.now().isoformat()
             }
@@ -154,8 +158,6 @@ class BatchImageProcessor:
         # Save batch results as JSON
         output_path = os.path.join(output_directory, output_file)
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
-        with open(validated_output_path, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
         
         print(f"\nBatch processing completed. Results saved to {output_path}")

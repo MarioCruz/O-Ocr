@@ -7,10 +7,12 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./converted_poems:/app/output
+      - ./converted_images:/app/converted_images
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - UPLOAD_DIRECTORY=/app/uploads
       - OUTPUT_DIRECTORY=/app/output
+      - CONVERTED_IMAGES_DIRECTORY=/app/converted_images
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
