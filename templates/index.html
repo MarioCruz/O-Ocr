@@ -23,6 +23,8 @@
         .loading { color: #007bff; }
         .error { color: #dc3545; }
         .success { color: #28a745; }
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         /* Modal styles */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
@@ -58,19 +60,24 @@
         
         <div class="main-content">
             <div class="image-panel">
-                <h3>Original Image</h3>
+                <h3>Original Image <span id="convertedIndicator" style="color: #007bff; font-size: 14px;"></span></h3>
                 <div class="image-container" id="imageContainer">
                     <p>Click "Upload Image" to load an image file</p>
                 </div>
             </div>
             
             <div class="text-panel">
-                <h3>Converted Text (Editable) <span id="confidenceScore" style="color: #28a745; font-size: 14px;"></span></h3>
+                <h3>Converted Text (Editable) <span id="confidenceScore" style="color: #28a745; font-size: 14px;"></span><span id="savedIndicator" style="color: #28a745; font-size: 14px; margin-left: 10px;"></span></h3>
                 <textarea class="text-area" id="textArea" placeholder="Converted text will appear here..."></textarea>
             </div>
         </div>
         
         <div class="status" id="status">Ready</div>
+        
+        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 12px;">
+            Version 1.0.0<br>
+            Made with ❤️ by MarioTheMaker for O, Miami
+        </div>
     </div>
 
     <!-- Help Modal -->
@@ -246,6 +253,8 @@
                 
                 // Clear text area and load draft
                 document.getElementById('textArea').value = '';
+                document.getElementById('savedIndicator').textContent = '';
+                document.getElementById('convertedIndicator').textContent = '';
                 loadDraft(data.filename);
             });
         }
@@ -271,6 +280,8 @@
                 
                 // Clear text area and load draft
                 document.getElementById('textArea').value = '';
+                document.getElementById('savedIndicator').textContent = '';
+                document.getElementById('convertedIndicator').textContent = '';
                 loadDraft(data.filename);
             });
         }
@@ -283,6 +294,9 @@
                 return;
             }
             
+            const convertBtn = document.querySelector('button[onclick="convertToText()"]');
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '<span class="spinner"></span>Converting...';
             updateStatus('Converting image to text...', 'loading');
             
             const model = localStorage.getItem('groq_model') || 'meta-llama/llama-4-scout-17b-16e-instruct';
@@ -320,6 +334,10 @@
             })
             .catch(error => {
                 updateStatus('Conversion failed', 'error');
+            })
+            .finally(() => {
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = 'Convert to Text';
             });
         }
         
@@ -330,6 +348,8 @@
                 updateStatus('No text to save', 'error');
                 return;
             }
+            
+
             
             fetch('/save_text', {
                 method: 'POST',
@@ -351,7 +371,14 @@
                     return;
                 }
                 
-                updateStatus(data.success, 'success');
+                // Show completion dialog
+                alert('✅ File saved successfully!\n📁 Image moved to completed folder\n\nClick OK to continue to next image.');
+                
+                // Refresh page after user clicks OK
+                window.location.reload();
+            })
+            .catch(error => {
+                updateStatus('Save failed', 'error');
             })
             .catch(error => {
                 updateStatus('Save failed', 'error');
@@ -373,6 +400,9 @@
             const formData = new FormData();
             formData.append('file', file);
             
+            const uploadBtn = document.querySelector('button[onclick="document.getElementById(\'fileInput\').click()"]');
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span class="spinner"></span>Uploading...';
             updateStatus('Uploading image...', 'loading');
             
             fetch('/upload_image', {
@@ -397,6 +427,10 @@
             })
             .catch(error => {
                 updateStatus('Upload failed', 'error');
+            })
+            .finally(() => {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = 'Upload Image';
             });
         }
         
@@ -517,15 +551,26 @@
         }
         
         function batchProcess() {
+            const apiKey = localStorage.getItem('groq_api_key');
+            if (!apiKey) {
+                updateStatus('Please set your Groq API key first', 'error');
+                showApiKeyModal();
+                return;
+            }
+            
             if (!confirm('Process all images in uploads folder? This may take a while.')) {
                 return;
             }
             
+            const batchBtn = document.querySelector('button[onclick="batchProcess()"]');
+            batchBtn.disabled = true;
+            batchBtn.innerHTML = '<span class="spinner"></span>Processing...';
             updateStatus('Starting batch processing...', 'loading');
             
             fetch('/batch_process', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey })
             })
             .then(response => response.json())
             .then(data => {
@@ -538,6 +583,10 @@
             })
             .catch(error => {
                 updateStatus('Batch processing failed', 'error');
+            })
+            .finally(() => {
+                batchBtn.disabled = false;
+                batchBtn.innerHTML = 'Batch Process All';
             });
         }
         
