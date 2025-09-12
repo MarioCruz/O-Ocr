@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OCR Setup</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .form-group { margin: 20px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .error { color: red; margin: 10px 0; }
+        .help { color: #666; font-size: 14px; margin-top: 5px; }
+        button[type="button"] { background: #28a745; margin-left: 10px; }
+        button[type="button"]:hover { background: #218838; }
+        input[readonly] { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <h1>OCR App Setup</h1>
+    <p>Please specify where you want your converted text files to be saved:</p>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="download_directory">Download Directory:</label>
+            <input type="text" id="download_directory" name="download_directory" 
+                   placeholder="/Users/yourname/Downloads/OCR-Files" required readonly>
+            <button type="button" onclick="selectDirectory()">Choose Directory</button>
+            <div class="help">
+                Click "Choose Directory" to select where your converted text files will be saved.
+            </div>
+        </div>
+        
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        <button type="submit">Start OCR App</button>
+    </form>
+    <script>
+        async function selectDirectory() {
+            try {
+                const dirHandle = await window.showDirectoryPicker();
+                document.getElementById('download_directory').value = dirHandle.name;
+                // Store the full path in a hidden field
+                let hiddenInput = document.getElementById('full_path');
+                if (!hiddenInput) {
+                    hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.id = 'full_path';
+                    hiddenInput.name = 'download_directory';
+                    document.querySelector('form').appendChild(hiddenInput);
+                }
+                // For web browsers, we can't get the full path, so use a default
+                hiddenInput.value = '/app/downloads/' + dirHandle.name;
+            } catch (err) {
+                alert('Directory selection cancelled or not supported. Please type the path manually.');
+                document.getElementById('download_directory').readOnly = false;
+            }
+        }
+    </script>
+</body>
+</html>

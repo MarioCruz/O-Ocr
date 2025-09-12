@@ -1,0 +1,14 @@
+{
+  "custom_poem": {
+    "name": "Custom Poem",
+    "description": "User-defined poem structure and content",
+    "structure": "Free verse with custom requirements",
+    "document_contains": [
+      "Student name",
+      "School name", 
+      "Poem text",
+      "Custom metadata"
+    ],
+    "prompt_template": "Transcribe everything in this image including {document_contains}. Preserve exact formatting, line breaks, and punctuation. Use [?] for unclear words. At the end, add exactly these lines:\nPOEM_TITLE: [actual title]\nPOEM_THEME: [theme]\nPOEM_LANGUAGE: [language]\nCUSTOM_STRUCTURE: {structure}\nConfidence: X/10"
+  }
+}

@@ -1,19 +1,23 @@
 version: '3.8'
+
 services:
   image-to-text:
     build: .
     ports:
       - "5002:5002"
     volumes:
-      - ./uploads:/app/uploads
-      - ./converted_poems:/app/output
-      - ./converted_images:/app/converted_images
+      # Mac-specific volume mounting - maps your local O-Ocr directory to the container
+      - ~/Documents/O-Ocr:/app/O-Ocr
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - UPLOAD_DIRECTORY=/app/uploads
-      - OUTPUT_DIRECTORY=/app/output
-      - CONVERTED_IMAGES_DIRECTORY=/app/converted_images
+      - UPLOAD_DIRECTORY=/app/O-Ocr/uploads
+      - OUTPUT_DIRECTORY=/app/O-Ocr/converted_poems
+      - CONVERTED_IMAGES_DIRECTORY=/app/O-Ocr/converted_images
     restart: unless-stopped
+    # Ensure directories exist before starting
+    command: >
+      sh -c "mkdir -p /app/O-Ocr/uploads /app/O-Ocr/converted_poems /app/O-Ocr/converted_images &&
+             python web_app.py"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
       interval: 30s
@@ -34,13 +38,17 @@ services:
   batch-processor:
     build: .
     volumes:
-      - ./uploads:/app/uploads
-      - ./converted_poems:/app/output
+      # Mac-specific volume mounting - maps your local O-Ocr directory to the container
+      - ~/Documents/O-Ocr:/app/O-Ocr
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - UPLOAD_DIRECTORY=/app/uploads
-      - OUTPUT_DIRECTORY=/app/output
-    command: python batch_processor.py
+      - UPLOAD_DIRECTORY=/app/O-Ocr/uploads
+      - OUTPUT_DIRECTORY=/app/O-Ocr/converted_poems
+      - CONVERTED_IMAGES_DIRECTORY=/app/O-Ocr/converted_images
+    # Ensure directories exist before starting batch processor
+    command: >
+      sh -c "mkdir -p /app/O-Ocr/uploads /app/O-Ocr/converted_poems /app/O-Ocr/converted_images &&
+             python batch_processor.py"
     profiles:
       - batch
     restart: "no"

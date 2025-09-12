@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y poppler-utils && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --user --no-cache-dir -r requirements.txt pillow-heif
 
 # Runtime stage
 FROM python:3.11-slim AS runtime
@@ -16,8 +16,10 @@ WORKDIR /app
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y poppler-utils curl && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Create non-root user and directories
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/uploads /app/output /app/converted_images && \
+    chown -R appuser:appuser /app
 
 # Copy Python packages from builder
 COPY --from=builder /root/.local /home/appuser/.local
@@ -30,6 +32,12 @@ USER appuser
 
 # Add local packages to PATH
 ENV PATH=/home/appuser/.local/bin:$PATH
+
+# Set default environment variables for zero-config operation
+ENV UPLOAD_DIRECTORY=/app/uploads
+ENV OUTPUT_DIRECTORY=/app/output
+ENV CONVERTED_IMAGES_DIRECTORY=/app/converted_images
+ENV GROQ_API_KEY=demo_key_replace_with_real_key
 
 EXPOSE 5002
 

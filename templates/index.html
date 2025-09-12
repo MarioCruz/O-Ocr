@@ -47,14 +47,29 @@
         </div>
         
         <div class="controls">
-            <input type="file" id="fileInput" accept="image/*,.pdf" style="display: none;" onchange="uploadImage()">
+            <input type="file" id="fileInput" accept="image/*,.pdf,.heic,.heif" style="display: none;" onchange="uploadImage()">
             <button class="btn" onclick="document.getElementById('fileInput').click()">Upload Image</button>
             <button class="btn" onclick="previousImage()">Previous</button>
             <button class="btn" onclick="nextImage()">Next</button>
+            <button class="btn" onclick="rotateImage('left')" style="background-color: #6c757d;">↺ Rotate Left</button>
+            <button class="btn" onclick="rotateImage('right')" style="background-color: #6c757d;">↻ Rotate Right</button>
+            <select id="processingMode" style="padding: 10px; margin: 0 10px; border: 1px solid #ddd; border-radius: 4px;" onchange="saveProcessingMode()">
+                <option value="poem">Student Poems (SUN Room)</option>
+                <option value="freeform">Free Form OCR</option>
+                <option value="zip_ode_explain">Zipcode (Zip Ode)</option>
+                <option value="custom_poem">Custom Poem</option>
+                <option value="postcard_poem">Post Card Poem</option>
+                <option value="worksheet_poem">Worksheet Poem</option>
+                <option value="survey_form">Non-Poem Survey Form</option>
+            </select>
+            <button class="btn" onclick="showCustomSettings()" style="background-color: #6f42c1;">Custom Settings</button>
             <button class="btn" onclick="convertToText()">Convert to Text</button>
             <button class="btn" onclick="saveText()">Save Text</button>
             <button class="btn" onclick="batchProcess()" style="background-color: #28a745;">Batch Process All</button>
             <button class="btn" onclick="showApiKeyModal()" style="background-color: #ffc107;">API Key</button>
+            <button class="btn" onclick="clearAllDrafts()" style="background-color: #dc3545;">Clear Drafts</button>
+            <button class="btn" onclick="showFileList()" style="background-color: #6c757d;">📂 View Files</button>
+            <button class="btn" onclick="downloadAllFiles()" style="background-color: #6f42c1;">📁 Download All Files</button>
             <button class="btn" onclick="showHelp()" style="background-color: #17a2b8;">Help</button>
         </div>
         
@@ -76,7 +91,8 @@
         
         <div style="text-align: center; margin-top: 20px; color: #666; font-size: 12px;">
             Version 1.0.0<br>
-            Made with ❤️ by MarioTheMaker for O, Miami
+            Made with ❤️ by MarioTheMaker for O, Miami<br>
+            <span style="font-family: monospace; background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">~/O-Ocr/</span>
         </div>
     </div>
 
@@ -89,12 +105,13 @@
             <div class="help-section">
                 <h3>🎯 How to Use</h3>
                 <p><strong>1. Upload files:</strong> Click "Upload Image" to add PDFs or images</p>
-                <p><strong>2. Navigate:</strong> Use Previous/Next to browse through files</p>
-                <p><strong>3. Convert:</strong> Click "Convert to Text" to transcribe current image</p>
-                <p><strong>4. Review:</strong> Check AI confidence score next to "Converted Text"</p>
-                <p><strong>5. Edit:</strong> Modify the transcribed text in the right panel</p>
-                <p><strong>6. Save:</strong> Click "Save Text" to create file with metadata</p>
-                <p><strong>6. Batch process:</strong> Click "Batch Process All" to convert all uploaded files</p>
+                <p><strong>2. Select mode:</strong> Choose processing mode (Student Poems, Free Form OCR, Zipcode, Custom)</p>
+                <p><strong>3. Navigate:</strong> Use Previous/Next to browse through files</p>
+                <p><strong>4. Convert:</strong> Click "Convert to Text" to transcribe current image</p>
+                <p><strong>5. Review:</strong> Check AI confidence score next to "Converted Text"</p>
+                <p><strong>6. Edit:</strong> Modify the transcribed text in the right panel</p>
+                <p><strong>7. Save:</strong> Click "Save Text" to create file with metadata</p>
+                <p><strong>8. Batch process:</strong> Click "Batch Process All" to convert all uploaded files</p>
             </div>
 
             <div class="help-section">
@@ -152,12 +169,27 @@
                         <div class="theme-name">Miami</div>
                         <div>Poems about Miami, Florida, beaches, city life, local culture</div>
                     </div>
+                    <div class="theme-item">
+                        <div class="theme-name">Sun</div>
+                        <div>Poems about sunshine, warmth, light</div>
+                    </div>
                 </div>
             </div>
 
             <div class="help-section">
+                <h3>🔄 Processing Modes</h3>
+                <p><strong>Student Poems (SUN Room):</strong> Standard poem transcription with metadata</p>
+                <p><strong>Free Form OCR:</strong> General text transcription for any document</p>
+                <p><strong>Zipcode (Zip Ode):</strong> Special format for O, Miami's Zip Ode poems</p>
+                <p><strong>Custom Poem:</strong> User-configurable document structure</p>
+                <p><strong>Post Card Poem:</strong> Transcribes poems written on postcards with postcard-specific metadata</p>
+                <p><strong>Worksheet Poem:</strong> Processes educational worksheets containing poems with worksheet type identification</p>
+                <p><strong>Non-Poem Survey Form:</strong> Transcribes survey forms, questionnaires, and feedback forms</p>
+            </div>
+
+            <div class="help-section">
                 <h3>📋 Supported Formats</h3>
-                <p><strong>Input:</strong> PNG, JPG, JPEG, GIF, BMP, TIFF, PDF</p>
+                <p><strong>Input:</strong> PNG, JPG, JPEG, GIF, BMP, TIFF, PDF, HEIC, HEIF</p>
                 <p><strong>Output:</strong> UTF-8 encoded .txt files</p>
                 <p><strong>File size limit:</strong> 50MB maximum</p>
             </div>
@@ -202,6 +234,38 @@
         </div>
     </div>
 
+    <!-- Custom Settings Modal -->
+    <div id="customSettingsModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="closeCustomSettings()">&times;</span>
+            <h2>⚙️ Custom Poem Settings</h2>
+            <p>Configure what the AI should look for in your custom poem documents:</p>
+            
+            <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Name:</label>
+            <input type="text" id="customName" placeholder="Custom Poem" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            
+            <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Description:</label>
+            <input type="text" id="customDescription" placeholder="User-defined poem structure and content" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            
+            <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Poem Structure:</label>
+            <input type="text" id="customStructure" placeholder="Free verse with custom requirements" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            
+            <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Document Contains (comma-separated):</label>
+            <input type="text" id="customContains" placeholder="Student name, School name, Poem text" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            
+            <div style="margin-top: 15px;">
+                <button class="btn" onclick="saveCustomSettings()" style="background-color: #28a745;">Save Settings</button>
+                <button class="btn" onclick="resetCustomSettings()" style="background-color: #dc3545;">Reset to Default</button>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 15px; font-size: 12px;">
+                <strong>Examples:</strong><br>
+                Structure: "Haiku with 5-7-5 syllables"<br>
+                Contains: "Student name, Grade level, Haiku poem, Date"
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentFilename = '';
         
@@ -212,11 +276,27 @@
         }
         
         function loadImage() {
+            updateStatus('Loading image...', 'loading');
             fetch('/get_image_info')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.error) {
-                        updateStatus(data.error, 'error');
+                        if (data.error === 'No images found') {
+                            document.getElementById('imageContainer').innerHTML = '<p style="color: #666;">No images found. Click "Upload Image" to add images.</p>';
+                            updateStatus('No images found', 'error');
+                        } else {
+                            updateStatus(data.error, 'error');
+                        }
+                        return;
+                    }
+                    
+                    if (!data.image_base64) {
+                        updateStatus('Invalid image data received', 'error');
                         return;
                     }
                     
@@ -228,7 +308,9 @@
                     loadDraft(data.filename);
                 })
                 .catch(error => {
-                    updateStatus('Failed to load image', 'error');
+                    console.error('Error loading image:', error);
+                    updateStatus(`Failed to load image: ${error.message}`, 'error');
+                    document.getElementById('imageContainer').innerHTML = '<p style="color: #dc3545;">Error loading image. Check console for details.</p>';
                 });
         }
         
@@ -255,6 +337,7 @@
                 document.getElementById('textArea').value = '';
                 document.getElementById('savedIndicator').textContent = '';
                 document.getElementById('convertedIndicator').textContent = '';
+                document.getElementById('confidenceScore').textContent = '';
                 loadDraft(data.filename);
             });
         }
@@ -282,6 +365,7 @@
                 document.getElementById('textArea').value = '';
                 document.getElementById('savedIndicator').textContent = '';
                 document.getElementById('convertedIndicator').textContent = '';
+                document.getElementById('confidenceScore').textContent = '';
                 loadDraft(data.filename);
             });
         }
@@ -300,11 +384,12 @@
             updateStatus('Converting image to text...', 'loading');
             
             const model = localStorage.getItem('groq_model') || 'meta-llama/llama-4-scout-17b-16e-instruct';
+            const processingMode = document.getElementById('processingMode').value;
             
             fetch('/convert_text', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ api_key: apiKey, model: model })
+                body: JSON.stringify({ api_key: apiKey, model: model, processing_mode: processingMode })
             })
             .then(response => response.json())
             .then(data => {
@@ -349,7 +434,10 @@
                 return;
             }
             
-
+            const saveBtn = document.querySelector('button[onclick="saveText()"]');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner"></span>Saving...';
+            updateStatus('Saving text and moving image...', 'loading');
             
             fetch('/save_text', {
                 method: 'POST',
@@ -371,17 +459,65 @@
                     return;
                 }
                 
-                // Show completion dialog
-                alert('✅ File saved successfully!\n📁 Image moved to completed folder\n\nClick OK to continue to next image.');
+                // Clear current display immediately
+                document.getElementById('textArea').value = '';
+                document.getElementById('savedIndicator').textContent = '';
+                document.getElementById('convertedIndicator').textContent = '';
+                document.getElementById('confidenceScore').textContent = '';
                 
-                // Refresh page after user clicks OK
-                window.location.reload();
+                // Clear draft from localStorage since file was saved
+                if (currentFilename) {
+                    localStorage.removeItem('draft_' + currentFilename);
+                }
+                
+                // Clear current student info variables
+                window.currentStudentName = '';
+                window.currentSchoolName = '';
+                window.currentPoemTitle = '';
+                window.currentPoemTheme = '';
+                window.currentPoemLanguage = '';
+                
+                // Handle no more images case
+                if (data.no_more_images) {
+                    document.getElementById('imageContainer').innerHTML = '<p style="color: #28a745; font-weight: bold;">🎉 All images processed!<br><br>Upload more images to continue.</p>';
+                    updateStatus('🎉 ' + data.message, 'success');
+                } else {
+                    document.getElementById('imageContainer').innerHTML = '<p>Loading next image...</p>';
+                    // Force refresh the image list from server before loading next image
+                    setTimeout(() => {
+                        // Force refresh by calling the server to get updated image list
+                        fetch('/get_image_info')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.error) {
+                                    if (data.error === 'No images found') {
+                                        document.getElementById('imageContainer').innerHTML = '<p style="color: #28a745; font-weight: bold;">🎉 All images processed!<br><br>Upload more images to continue.</p>';
+                                        updateStatus('🎉 All images processed! No more images in upload directory.', 'success');
+                                    } else {
+                                        updateStatus(data.error, 'error');
+                                    }
+                                    return;
+                                }
+                                
+                                const imageContainer = document.getElementById('imageContainer');
+                                imageContainer.innerHTML = `<img src="data:image/jpeg;base64,${data.image_base64}" alt="${data.filename}" onclick="toggleZoom(this)">`;
+                                
+                                currentFilename = data.filename;
+                                updateStatus(`✅ File saved and moved! Now showing: Image ${data.index}/${data.total}: ${data.filename}`, 'success');
+                                loadDraft(data.filename);
+                            })
+                            .catch(error => {
+                                updateStatus('Failed to load next image', 'error');
+                            });
+                    }, 100);
+                }
             })
             .catch(error => {
                 updateStatus('Save failed', 'error');
             })
-            .catch(error => {
-                updateStatus('Save failed', 'error');
+            .finally(() => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = 'Save Text';
             });
         }
         
@@ -446,17 +582,79 @@
         setInterval(function() {
             const text = document.getElementById('textArea').value;
             if (text.trim() && currentFilename && currentFilename !== '') {
-                localStorage.setItem('draft_' + currentFilename, text);
+                try {
+                    localStorage.setItem('draft_' + currentFilename, text);
+                } catch (e) {
+                    // If localStorage is full, clean up and try again
+                    if (e.name === 'QuotaExceededError') {
+                        console.warn('localStorage quota exceeded, cleaning up drafts');
+                        cleanupOldDrafts();
+                        try {
+                            localStorage.setItem('draft_' + currentFilename, text);
+                        } catch (e2) {
+                            console.error('Still cannot save draft after cleanup:', e2);
+                            updateStatus('Warning: Cannot save draft - storage full', 'error');
+                        }
+                    }
+                }
             }
         }, 30000);
         
         // Load draft when switching images
         function loadDraft(filename) {
-            const draft = localStorage.getItem('draft_' + filename);
-            if (draft) {
-                document.getElementById('textArea').value = draft;
-                updateStatus('Draft loaded', 'success');
+            try {
+                const draft = localStorage.getItem('draft_' + filename);
+                if (draft) {
+                    document.getElementById('textArea').value = draft;
+                    updateStatus('Draft loaded', 'success');
+                }
+            } catch (e) {
+                console.error('Error loading draft:', e);
+                // Remove problematic draft
+                try {
+                    localStorage.removeItem('draft_' + filename);
+                } catch (e2) {
+                    console.error('Error removing problematic draft:', e2);
+                }
             }
+        }
+        
+        // Clean up old drafts from localStorage
+        function cleanupOldDrafts() {
+            const keys = Object.keys(localStorage);
+            const draftKeys = keys.filter(key => key.startsWith('draft_'));
+            
+            // Remove drafts older than 7 days
+            const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            
+            draftKeys.forEach(key => {
+                try {
+                    const item = localStorage.getItem(key);
+                    if (item) {
+                        // Check if we can determine age, otherwise remove very old drafts
+                        const draftCount = draftKeys.length;
+                        if (draftCount > 50) { // If too many drafts, clean up
+                            localStorage.removeItem(key);
+                            console.log('Removed old draft:', key);
+                        }
+                    }
+                } catch (e) {
+                    // If there's an error, remove the problematic key
+                    localStorage.removeItem(key);
+                }
+            });
+        }
+        
+        // Clear all drafts function for manual cleanup
+        function clearAllDrafts() {
+            const keys = Object.keys(localStorage);
+            const draftKeys = keys.filter(key => key.startsWith('draft_'));
+            
+            draftKeys.forEach(key => {
+                localStorage.removeItem(key);
+            });
+            
+            updateStatus(`Cleared ${draftKeys.length} draft(s) from storage`, 'success');
         }
         
         function showHelp() {
@@ -468,14 +666,19 @@
         }
         
         function showApiKeyModal() {
-            const savedApiKey = localStorage.getItem('groq_api_key');
-            const savedModel = localStorage.getItem('groq_model');
-            document.getElementById('apiKeyInput').value = savedApiKey || '';
-            document.getElementById('modelSelect').value = savedModel || 'meta-llama/llama-4-scout-17b-16e-instruct';
-            document.getElementById('apiKeyModal').style.display = 'block';
-            
-            if (savedApiKey) {
-                loadModels(savedApiKey);
+            try {
+                const savedApiKey = localStorage.getItem('groq_api_key');
+                const savedModel = localStorage.getItem('groq_model');
+                document.getElementById('apiKeyInput').value = savedApiKey || '';
+                document.getElementById('modelSelect').value = savedModel || 'meta-llama/llama-4-scout-17b-16e-instruct';
+                document.getElementById('apiKeyModal').style.display = 'block';
+                
+                if (savedApiKey) {
+                    loadModels(savedApiKey);
+                }
+            } catch (e) {
+                console.error('Error loading API settings:', e);
+                document.getElementById('apiKeyModal').style.display = 'block';
             }
         }
         
@@ -513,9 +716,14 @@
             const apiKey = document.getElementById('apiKeyInput').value.trim();
             const model = document.getElementById('modelSelect').value;
             if (apiKey) {
-                localStorage.setItem('groq_api_key', apiKey);
-                localStorage.setItem('groq_model', model);
-                updateStatus('Settings saved successfully', 'success');
+                try {
+                    localStorage.setItem('groq_api_key', apiKey);
+                    localStorage.setItem('groq_model', model);
+                    updateStatus('Settings saved successfully', 'success');
+                } catch (e) {
+                    console.error('Error saving API settings:', e);
+                    updateStatus('Error saving settings - storage may be full', 'error');
+                }
             } else {
                 updateStatus('Please enter a valid API key', 'error');
             }
@@ -523,11 +731,16 @@
         }
         
         function clearApiKey() {
-            localStorage.removeItem('groq_api_key');
-            localStorage.removeItem('groq_model');
-            document.getElementById('apiKeyInput').value = '';
-            document.getElementById('modelSelect').value = 'meta-llama/llama-4-scout-17b-16e-instruct';
-            updateStatus('Settings cleared', 'success');
+            try {
+                localStorage.removeItem('groq_api_key');
+                localStorage.removeItem('groq_model');
+                document.getElementById('apiKeyInput').value = '';
+                document.getElementById('modelSelect').value = 'meta-llama/llama-4-scout-17b-16e-instruct';
+                updateStatus('Settings cleared', 'success');
+            } catch (e) {
+                console.error('Error clearing API settings:', e);
+                updateStatus('Error clearing settings', 'error');
+            }
             closeApiKeyModal();
         }
         
@@ -538,15 +751,74 @@
             }
         }
         
+        function showCustomSettings() {
+            loadCustomSettings();
+            document.getElementById('customSettingsModal').style.display = 'block';
+        }
+        
+        function closeCustomSettings() {
+            document.getElementById('customSettingsModal').style.display = 'none';
+        }
+        
+        function loadCustomSettings() {
+            fetch('/get_custom_settings')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('customName').value = data.name || '';
+                    document.getElementById('customDescription').value = data.description || '';
+                    document.getElementById('customStructure').value = data.structure || '';
+                    document.getElementById('customContains').value = data.document_contains ? data.document_contains.join(', ') : '';
+                })
+                .catch(error => console.log('Failed to load custom settings'));
+        }
+        
+        function saveCustomSettings() {
+            const settings = {
+                name: document.getElementById('customName').value,
+                description: document.getElementById('customDescription').value,
+                structure: document.getElementById('customStructure').value,
+                document_contains: document.getElementById('customContains').value.split(',').map(s => s.trim()).filter(s => s)
+            };
+            
+            fetch('/save_custom_settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                } else {
+                    updateStatus('Custom settings saved successfully', 'success');
+                    closeCustomSettings();
+                }
+            })
+            .catch(error => {
+                updateStatus('Failed to save custom settings', 'error');
+            });
+        }
+        
+        function resetCustomSettings() {
+            document.getElementById('customName').value = 'Custom Poem';
+            document.getElementById('customDescription').value = 'User-defined poem structure and content';
+            document.getElementById('customStructure').value = 'Free verse with custom requirements';
+            document.getElementById('customContains').value = 'Student name, School name, Poem text';
+        }
+        
         // Close modal when clicking outside of it
         window.onclick = function(event) {
             const helpModal = document.getElementById('helpModal');
             const apiKeyModal = document.getElementById('apiKeyModal');
+            const customModal = document.getElementById('customSettingsModal');
             if (event.target == helpModal) {
                 helpModal.style.display = 'none';
             }
             if (event.target == apiKeyModal) {
                 apiKeyModal.style.display = 'none';
+            }
+            if (event.target == customModal) {
+                customModal.style.display = 'none';
             }
         }
         
@@ -590,8 +862,89 @@
             });
         }
         
+        function saveProcessingMode() {
+            const mode = document.getElementById('processingMode').value;
+            try {
+                localStorage.setItem('processing_mode', mode);
+            } catch (e) {
+                console.error('Error saving processing mode:', e);
+            }
+        }
+        
+        function loadProcessingMode() {
+            try {
+                const savedMode = localStorage.getItem('processing_mode');
+                if (savedMode) {
+                    document.getElementById('processingMode').value = savedMode;
+                }
+            } catch (e) {
+                console.error('Error loading processing mode:', e);
+            }
+        }
+        
+        function rotateImage(direction) {
+            fetch('/rotate_image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction: direction })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    updateStatus(data.error, 'error');
+                    return;
+                }
+                
+                const imageContainer = document.getElementById('imageContainer');
+                imageContainer.innerHTML = `<img src="data:image/jpeg;base64,${data.image_base64}" alt="${data.filename}" onclick="toggleZoom(this)">`;
+                updateStatus('Image rotated successfully', 'success');
+            })
+            .catch(error => {
+                updateStatus('Rotation failed', 'error');
+            });
+        }
+        
+        function setDownloadDirectory() {
+            alert('Files are automatically saved inside the container. Use the Download Files button to get them.');
+        }
+        
+        function downloadAllFiles() {
+            const link = document.createElement('a');
+            link.href = '/download_all_zip';
+            link.download = 'converted_poems.zip';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            updateStatus('Downloading all files as zip...', 'success');
+        }
+        
+        function showFileList() {
+            fetch('/list_files')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.files && data.files.length > 0) {
+                        let fileList = 'Files in container:\n\n';
+                        data.files.forEach(file => {
+                            const date = new Date(file.modified * 1000).toLocaleString();
+                            const size = (file.size / 1024).toFixed(1) + ' KB';
+                            fileList += `${file.name} (${size}, ${date})\n`;
+                        });
+                        alert(fileList);
+                    } else {
+                        alert('No files found in container');
+                    }
+                })
+                .catch(error => {
+                    updateStatus('Failed to list files', 'error');
+                });
+        }
+        
+
+        
         // Load first image on page load
         window.onload = function() {
+            loadProcessingMode();
+            cleanupOldDrafts(); // Clean up old drafts on page load
             loadImage();
         };
     </script>
